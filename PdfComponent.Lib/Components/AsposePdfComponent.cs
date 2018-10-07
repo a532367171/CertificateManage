@@ -4,6 +4,7 @@ using Aspose.Pdf.Text;
 using PdfComponent.Lib.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -13,12 +14,19 @@ namespace PdfComponent.Lib.Components
 {
     public class AsposePdfComponent : IPdfComponentFunc
     {
+        private BackgroundWorker backgroundWorker1; //ProcessForm 窗体事件(进度条窗体)
+
         public string ComponentName => "Aspose.Pdf";
 
         private const string Key = "PExpY2Vuc2U+DQogIDxEYXRhPg0KICAgIDxMaWNlbnNlZFRvPlNoYW5naGFpIEh1ZHVuIEluZm9ybWF0aW9uIFRlY2hub2xvZ3kgQ28uLCBMdGQ8L0xpY2Vuc2VkVG8+DQogICAgPEVtYWlsVG8+MzE3NzAxODA5QHFxLmNvbTwvRW1haWxUbz4NCiAgICA8TGljZW5zZVR5cGU+RGV2ZWxvcGVyIE9FTTwvTGljZW5zZVR5cGU+DQogICAgPExpY2Vuc2VOb3RlPkxpbWl0ZWQgdG8gMSBkZXZlbG9wZXIsIHVubGltaXRlZCBwaHlzaWNhbCBsb2NhdGlvbnM8L0xpY2Vuc2VOb3RlPg0KICAgIDxPcmRlcklEPjE2MDkwMjAwNDQwMDwvT3JkZXJJRD4NCiAgICA8VXNlcklEPjI2NjE2NjwvVXNlcklEPg0KICAgIDxPRU0+VGhpcyBpcyBhIHJlZGlzdHJpYnV0YWJsZSBsaWNlbnNlPC9PRU0+DQogICAgPFByb2R1Y3RzPg0KICAgICAgPFByb2R1Y3Q+QXNwb3NlLlRvdGFsIGZvciAuTkVUPC9Qcm9kdWN0Pg0KICAgIDwvUHJvZHVjdHM+DQogICAgPEVkaXRpb25UeXBlPkVudGVycHJpc2U8L0VkaXRpb25UeXBlPg0KICAgIDxTZXJpYWxOdW1iZXI+NzM4MDNhYmUtYzZkMi00MTY3LTg2MTgtN2I0NDViNDRmOGY0PC9TZXJpYWxOdW1iZXI+DQogICAgPFN1YnNjcmlwdGlvbkV4cGlyeT4yMDE3MDkwNzwvU3Vic2NyaXB0aW9uRXhwaXJ5Pg0KICAgIDxMaWNlbnNlVmVyc2lvbj4zLjA8L0xpY2Vuc2VWZXJzaW9uPg0KICAgIDxMaWNlbnNlSW5zdHJ1Y3Rpb25zPmh0dHA6Ly93d3cuYXNwb3NlLmNvbS9jb3Jwb3JhdGUvcHVyY2hhc2UvbGljZW5zZS1pbnN0cnVjdGlvbnMuYXNweDwvTGljZW5zZUluc3RydWN0aW9ucz4NCiAgPC9EYXRhPg0KICA8U2lnbmF0dXJlPm5LNVVUR3dZMWVJSEtIV0d2NW5sQUxXUy81bDEzWkFuamlvdnlBcGNqQis0ZjNGbm5yOWhjeUlzazlvVzQySWp0ZFYra2JHZlNSMUV4OUozSGlkaThCeE43aHFiR1BERXNaWGo2RlYxaGl1N2MxWmUyNEp3VGc2UnpsNUNJRHY1YVhxbDQyczBkSGw4eXpreDRBM2RTTU5KTzRiQ094a2V2OFBiOWxSaUc3ST08L1NpZ25hdHVyZT4NCjwvTGljZW5zZT4=";
         private static Stream LStream = (Stream)new MemoryStream(Convert.FromBase64String(Key));
         public AsposePdfComponent()
         {
+            SetPdfLicense();
+        }
+        public AsposePdfComponent(BackgroundWorker backgroundWorker)
+        {
+            this.backgroundWorker1 = backgroundWorker;
             SetPdfLicense();
         }
 
@@ -79,11 +87,19 @@ namespace PdfComponent.Lib.Components
 
         public void ToJpeg(string absoluteFilePath, string outputPath)
         {
+            float x = 0.0F;
+            int y = 0;
             using (var pdfDocument = new Document(absoluteFilePath))
             {
-                for(var i = 1; i < pdfDocument.Pages.Count + 1; i++)
+                for (var i = 1; i < pdfDocument.Pages.Count + 1; i++)
                 {
-
+                    x = (float)i / (float)pdfDocument.Pages.Count;
+                    y = (int)(x * 100);
+                    backgroundWorker1.ReportProgress(y);
+                    if (backgroundWorker1.CancellationPending)  // 如果用户取消则跳出处理数据代码 
+                    {
+                        break;
+                    }
                     using (FileStream imageStream = new FileStream(Path.Combine(outputPath, i.ToString() + ".jpeg"), FileMode.Create))
                     {
                         //Quality [0-100], 100 is Maximum
@@ -92,6 +108,7 @@ namespace PdfComponent.Lib.Components
                         JpegDevice jpegDevice = new JpegDevice(resolution, 100);
 
                         //convert a particular page and save the image to stream
+                        //拆分
                         jpegDevice.Process(pdfDocument.Pages[i], imageStream);
 
                         //close stream
